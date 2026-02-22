@@ -10,7 +10,8 @@ import {
     PlusSquare,
     LogOut,
     TrendingUp,
-    Zap
+    Zap,
+    ShieldAlert
 } from "lucide-react";
 
 export default async function DashboardLayout({
@@ -71,6 +72,12 @@ export default async function DashboardLayout({
                     <Link href="/dashboard/create" className="mt-8 flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-xl shadow-blue-900/30 active:scale-95 group uppercase tracking-widest text-[10px]">
                         <PlusSquare size={16} className="text-[#bef264]" /> Nuevo Análisis
                     </Link>
+
+                    {user?.email === process.env.ADMIN_EMAIL && (
+                        <Link href="/dashboard/admin" className="mt-4 flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-red-600/10 border border-red-500/20 hover:bg-red-500/20 text-red-500 font-bold transition-all shadow-xl shadow-red-900/10 active:scale-95 group uppercase tracking-widest text-[10px]">
+                            <ShieldAlert size={16} /> Admin Panel
+                        </Link>
+                    )}
                 </nav>
 
                 <div className="pt-6 border-t border-[#252b46]">
@@ -139,6 +146,12 @@ export default async function DashboardLayout({
                         <User className="w-5 h-5" />
                         <span className="text-[9px] font-bold uppercase tracking-widest">Perfil</span>
                     </Link>
+                    {user?.email === process.env.ADMIN_EMAIL && (
+                        <Link href="/dashboard/admin" className="flex flex-col items-center gap-1.5 flex-1 transition-colors text-red-500 hover:text-red-400">
+                            <ShieldAlert className="w-5 h-5" />
+                            <span className="text-[9px] font-bold uppercase tracking-widest">Admin</span>
+                        </Link>
+                    )}
                 </div>
             </nav>
         </div>
