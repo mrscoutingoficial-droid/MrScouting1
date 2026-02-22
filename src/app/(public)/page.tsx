@@ -335,7 +335,7 @@ export default function LandingPage() {
                         <span className="font-bold text-lg tracking-tighter uppercase">MR. SCOUTING</span>
                     </div>
                     <div className="text-slate-500 text-sm">
-                        © 2024 MR. SCOUTING. Todos los derechos reservados.
+                        © 2026 MR. SCOUTING. Todos los derechos reservados.
                     </div>
                     <div className="flex gap-6">
                         <a className="text-slate-400 hover:text-white transition-colors" href="#"><Public size={20} /></a>
