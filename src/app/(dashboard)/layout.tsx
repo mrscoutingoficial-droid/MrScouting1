@@ -107,11 +107,16 @@ export default async function DashboardLayout({
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 md:gap-4">
                         <div className="bg-[#161b2e] px-3 py-1.5 rounded-lg border border-[#252b46] flex items-center gap-2 max-w-[120px] sm:max-w-none">
                             <Zap size={10} className="text-[#bef264]" />
                             <span className="text-[10px] font-bold uppercase tracking-widest truncate">{user.email?.split('@')[0]}</span>
                         </div>
+                        <form action="/auth/signout" method="post" className="lg:hidden">
+                            <button className="text-slate-500 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-500/10 flex items-center justify-center">
+                                <LogOut size={18} />
+                            </button>
+                        </form>
                     </div>
                 </header>
 
