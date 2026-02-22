@@ -2,7 +2,8 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { Stage, Layer, Rect, Circle, Line, Group, Text, Arrow } from 'react-konva';
-import { MousePointer2, Pencil, Trash2, UserPlus, ArrowRight, Download } from 'lucide-react';
+import { MousePointer2, Pencil, Trash2, UserPlus, ArrowRight, Download, Save, Cloud } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface Player {
     id: string;
@@ -29,6 +30,80 @@ export function TacticalBoard() {
     const [isDrawing, setIsDrawing] = useState(false);
     const [tool, setTool] = useState<'move' | 'line' | 'arrow'>('move');
     const [teamToAdd, setTeamToAdd] = useState<'home' | 'away'>('home');
+
+    // Supabase State
+    const [userId, setUserId] = useState<string | null>(null);
+    const [savedBoards, setSavedBoards] = useState<any[]>([]);
+    const [currentBoardId, setCurrentBoardId] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const supabase = createClient();
+
+    useEffect(() => {
+        const init = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUserId(user.id);
+                fetchBoards(user.id);
+            }
+        };
+        init();
+    }, []);
+
+    const fetchBoards = async (uid: string) => {
+        const { data } = await supabase
+            .from('tactical_boards')
+            .select('*')
+            .eq('user_id', uid)
+            .order('created_at', { ascending: false });
+        if (data) setSavedBoards(data);
+    };
+
+    const saveBoard = async () => {
+        if (!userId) return;
+        setIsSaving(true);
+        let nameToSave = "Planteamiento Táctico";
+
+        if (currentBoardId) {
+            const existing = savedBoards.find(b => b.id === currentBoardId);
+            if (existing) nameToSave = existing.name;
+        } else {
+            const promptName = window.prompt("Nombre para esta pizarra:", "Pizarra 4-3-3 Ofensiva");
+            if (!promptName) { setIsSaving(false); return; }
+            nameToSave = promptName;
+        }
+
+        const payload = {
+            user_id: userId,
+            name: nameToSave,
+            players_data: players,
+            drawings_data: drawings
+        };
+
+        if (currentBoardId) {
+            await supabase.from('tactical_boards').update(payload).eq('id', currentBoardId);
+        } else {
+            const { data } = await supabase.from('tactical_boards').insert(payload).select().single();
+            if (data) {
+                setCurrentBoardId(data.id);
+            }
+        }
+        await fetchBoards(userId);
+        setIsSaving(false);
+    };
+
+    const loadBoard = (boardId: string) => {
+        if (!boardId) {
+            setCurrentBoardId(null);
+            clearBoard();
+            return;
+        }
+        const board = savedBoards.find(b => b.id === boardId);
+        if (board) {
+            setPlayers(board.players_data || []);
+            setDrawings(board.drawings_data || []);
+            setCurrentBoardId(board.id);
+        }
+    };
 
     // Drawing state
     const currentDrawing = useRef<Drawing | null>(null);
@@ -101,6 +176,33 @@ export function TacticalBoard() {
 
     return (
         <div className="flex flex-col gap-4 w-full">
+            {/* Top Cloud Sync Bar */}
+            <div className="flex items-center justify-between bg-[#161b2e]/50 p-3 rounded-2xl border border-[#252b46]/50">
+                <div className="flex items-center gap-3">
+                    <Cloud className="w-5 h-5 text-blue-500" />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nube Táctica</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <select
+                        value={currentBoardId || ''}
+                        onChange={(e) => loadBoard(e.target.value)}
+                        className="bg-[#0a0f1e] border border-[#252b46] rounded-xl px-4 py-2 text-xs text-slate-300 focus:outline-none focus:border-blue-500 font-medium"
+                    >
+                        <option value="">+ Nueva Pizarra Limpia</option>
+                        {savedBoards.map(b => (
+                            <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                    </select>
+                    <button
+                        onClick={saveBoard}
+                        disabled={isSaving}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-[2px] transition-all flex items-center gap-2 ${isSaving ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20'}`}
+                    >
+                        <Save size={14} /> {isSaving ? 'Guardando...' : 'Guardar en Nube'}
+                    </button>
+                </div>
+            </div>
+
             {/* Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-4 bg-[#161b2e] p-3 rounded-2xl border border-[#252b46] shadow-xl">
                 <div className="flex items-center gap-2">

@@ -77,9 +77,9 @@ export default function TacticsPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <h3 className="font-bold text-sm uppercase tracking-[4px] text-[#bef264]">MEMORIA LOCAL</h3>
+                            <h3 className="font-bold text-sm uppercase tracking-[4px] text-[#bef264]">NUBE TÁCTICA</h3>
                             <p className="text-[10px] text-slate-500 italic font-bold uppercase tracking-widest leading-relaxed">
-                                Sincronización automática de metadatos activa (Módulo Beta).
+                                Tus configuraciones tácticas se guardan y sincronizan automáticamente en tiempo real en Supabase.
                             </p>
                         </div>
 
