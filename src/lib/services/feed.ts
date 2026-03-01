@@ -77,7 +77,12 @@ export const getPostById = async (id: string) => {
         .single();
 
     if (error) {
-        console.error('Error fetching post detail:', error);
+        console.error('Error fetching post detail:', {
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint
+        });
         return null;
     }
 
@@ -113,4 +118,130 @@ export const getUserPosts = async (userId: string, filter?: 'Todos' | 'Borradore
     }
 
     return data as any[];
+};
+export const getComments = async (postId: string) => {
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+        .from('comments')
+        .select(`
+            *,
+            profiles:author_id (
+                full_name,
+                avatar_url
+            )
+        `)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching comments:', error);
+        return [];
+    }
+
+    return data as any[];
+};
+
+export const createComment = async (postId: string, authorId: string, content: string) => {
+    const supabase = createClient();
+    console.log(`[createComment] Starting for post ${postId}, author ${authorId}`);
+
+    // Ensure profile exists (fallback for missing trigger execution/data)
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', authorId)
+        .single();
+
+    console.log(`[createComment] Profile check result:`, { profile, profileError });
+
+    if (!profile) {
+        console.log(`[createComment] Profile missing, attempting upsert...`);
+        const { data: { user } } = await supabase.auth.getUser();
+        const fallbackName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous Analyst';
+
+        const { error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({
+                id: authorId,
+                full_name: fallbackName
+            });
+
+        if (upsertError) {
+            console.error(`[createComment] Profile upsert failed:`, upsertError);
+        } else {
+            console.log(`[createComment] Profile upsert successful for ${fallbackName}`);
+        }
+    }
+
+    console.log(`[createComment] Proceeding to insert comment...`);
+    const { data, error } = await supabase
+        .from('comments')
+        .insert({
+            post_id: postId,
+            author_id: authorId,
+            content
+        })
+        .select(`
+            *,
+            profiles:author_id (
+                full_name,
+                avatar_url
+            )
+        `)
+        .single();
+
+    if (error) {
+        console.error('[createComment] Comment insert failed:', error);
+        throw error;
+    }
+
+    console.log(`[createComment] Comment successfully created:`, data.id);
+    return data as any;
+};
+
+// --- Social Interactions ---
+
+export const getPostInteractions = async (postId: string, userId: string) => {
+    const supabase = createClient();
+
+    const [likesResult, bookmarksResult, totalLikesResult] = await Promise.all([
+        supabase.from('post_likes').select('user_id').eq('post_id', postId).eq('user_id', userId).single(),
+        supabase.from('post_bookmarks').select('user_id').eq('post_id', postId).eq('user_id', userId).single(),
+        supabase.from('post_likes').select('user_id', { count: 'exact' }).eq('post_id', postId)
+    ]);
+
+    return {
+        isLiked: !likesResult.error,
+        isBookmarked: !bookmarksResult.error,
+        totalLikes: totalLikesResult.count || 0
+    };
+};
+
+export const toggleLike = async (postId: string, userId: string, isCurrentlyLiked: boolean) => {
+    const supabase = createClient();
+
+    if (isCurrentlyLiked) {
+        const { error } = await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', userId);
+        if (error) throw error;
+        return false;
+    } else {
+        const { error } = await supabase.from('post_likes').insert({ post_id: postId, user_id: userId });
+        if (error) throw error;
+        return true;
+    }
+};
+
+export const toggleBookmark = async (postId: string, userId: string, isCurrentlyBookmarked: boolean) => {
+    const supabase = createClient();
+
+    if (isCurrentlyBookmarked) {
+        const { error } = await supabase.from('post_bookmarks').delete().eq('post_id', postId).eq('user_id', userId);
+        if (error) throw error;
+        return false;
+    } else {
+        const { error } = await supabase.from('post_bookmarks').insert({ post_id: postId, user_id: userId });
+        if (error) throw error;
+        return true;
+    }
 };

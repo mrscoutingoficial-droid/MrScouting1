@@ -3,8 +3,10 @@
 import { useEffect, useState, use } from 'react';
 import { ChevronLeft, Calendar, User, Zap, Target, BookOpen, BarChart2, TrendingUp, Shield, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { getPostById } from '@/lib/services/feed';
+import { getPostById, getComments, createComment } from '@/lib/services/feed';
 import { RadarChart as Radar } from '@/components/charts/RadarChart';
+import { createClient } from '@/lib/supabase/client';
+import { MessageSquare, Send } from 'lucide-react';
 
 const CATEGORY_CONFIG: Record<string, { label: string, color: string, icon: any }> = {
     articulo: { label: 'ARTÍCULO', color: '#10b981', icon: BookOpen },
@@ -20,16 +22,45 @@ function getCategoryConfig(category: string) {
 export default function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const [post, setPost] = useState<any>(null);
+    const [comments, setComments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [commentText, setCommentText] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [user, setUser] = useState<any>(null);
+
+    const supabase = createClient();
 
     useEffect(() => {
-        const fetchPost = async () => {
-            const data = await getPostById(id);
-            setPost(data);
+        const fetchData = async () => {
+            // Fetch sequentially to prevent Supabase Client race conditions and AbortErrors
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            const postData = await getPostById(id);
+            const commentData = await getComments(id);
+
+            setPost(postData);
+            setComments(commentData);
+            setUser(authUser);
             setLoading(false);
         };
-        fetchPost();
+        fetchData();
     }, [id]);
+
+    const handleCommentSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!commentText.trim() || !user || isSubmitting) return;
+
+        setIsSubmitting(true);
+        try {
+            const newComment = await createComment(id, user.id, commentText);
+            setComments(prev => [...prev, newComment]);
+            setCommentText('');
+        } catch (error) {
+            console.error("Error submitting comment:", error);
+            alert("No se pudo publicar el comentario. Reintente más tarde.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -175,6 +206,85 @@ export default function PostDetailPage({ params }: { params: Promise<{ id: strin
                         </div>
                     </div>
                 )}
+            </div>
+            {/* Comments Section */}
+            <div className="pt-12 border-t border-white/5 space-y-12">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                            <MessageSquare size={20} />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-white tracking-tight">Comunidad de Inteligencia</h3>
+                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Debate táctico y feedback especializado</p>
+                        </div>
+                    </div>
+                    <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                        {comments.length} COMENTARIOS
+                    </div>
+                </div>
+
+                {/* Comment Form */}
+                {user ? (
+                    <form onSubmit={handleCommentSubmit} className="relative group">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-[#bef264] rounded-[32px] blur opacity-10 group-focus-within:opacity-20 transition-opacity"></div>
+                        <div className="relative glass border border-white/10 rounded-[32px] p-2 flex items-center gap-2">
+                            <input
+                                type="text"
+                                placeholder="Añadir un análisis o pregunta..."
+                                value={commentText}
+                                onChange={(e) => setCommentText(e.target.value)}
+                                className="flex-1 bg-transparent border-none outline-none px-6 py-4 text-sm text-white placeholder:text-slate-600 font-medium"
+                                disabled={isSubmitting}
+                            />
+                            <button
+                                type="submit"
+                                disabled={!commentText.trim() || isSubmitting}
+                                className="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+                            >
+                                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <div className="p-8 rounded-[32px] border border-dashed border-white/10 text-center space-y-4">
+                        <p className="text-slate-500 text-xs font-medium">Inicia sesión para participar en el debate táctico.</p>
+                        <Link href="/login" className="inline-block px-8 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-blue-700 transition-all">
+                            Iniciar Sesión
+                        </Link>
+                    </div>
+                )}
+
+                {/* Comments List */}
+                <div className="space-y-6">
+                    {comments.length === 0 ? (
+                        <div className="py-12 text-center space-y-2">
+                            <p className="text-slate-600 text-sm font-medium italic">Aún no hay comentarios en este informe.</p>
+                            <p className="text-slate-800 text-[9px] font-bold uppercase tracking-[4px]">Sé el primero en aportar valor</p>
+                        </div>
+                    ) : (
+                        comments.map((comment) => (
+                            <div key={comment.id} className="group relative flex gap-4 p-6 rounded-[32px] hover:bg-white/[0.02] transition-colors border border-transparent hover:border-white/5">
+                                <div className="w-10 h-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-xs font-black text-white shrink-0 shadow-lg capitalize">
+                                    {comment.profiles?.full_name?.[0] || 'U'}
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-bold text-white leading-tight">
+                                            {comment.profiles?.full_name || 'Anonymous Analyst'}
+                                        </span>
+                                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+                                            {new Date(comment.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                                        </span>
+                                    </div>
+                                    <p className="text-slate-400 text-sm leading-relaxed">
+                                        {comment.content}
+                                    </p>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );

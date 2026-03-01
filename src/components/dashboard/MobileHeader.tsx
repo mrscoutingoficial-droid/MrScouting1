@@ -33,22 +33,22 @@ export function MobileHeader({ userEmail }: MobileHeaderProps) {
     const initials = (userEmail?.split('@')[0] || 'U').slice(0, 2).toUpperCase();
 
     return (
-        <header className="sticky top-0 z-40 lg:hidden">
-            <div className="bg-[#0a0f1e]/95 backdrop-blur-2xl border-b border-white/[0.06] px-4 h-14 flex items-center justify-between shadow-[0_2px_20px_rgba(0,0,0,0.4)]">
-                {/* Left: Brand mark */}
-                <Link href="/dashboard" className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-[#162d9c] rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/30 border border-white/10 group-active:scale-95 transition-transform">
-                        <Zap size={16} className="text-[#bef264] fill-[#bef264]" />
+        <header className="sticky top-0 z-40 lg:hidden px-4 pt-4 bg-[#0a0f1e]">
+            <div className="flex items-center justify-between h-12 relative">
+                {/* Left: Brand mark (Dark circular bolt) */}
+                <Link href="/dashboard" className="flex items-center">
+                    <div className="w-10 h-10 bg-[#1e293b] rounded-full flex items-center justify-center shadow-lg shadow-blue-900/10 active:scale-95 transition-transform">
+                        <Zap size={18} className="text-[#0081ff] fill-[#0081ff]" />
                     </div>
                 </Link>
 
                 {/* Center: Current page title */}
                 <div className="absolute left-1/2 -translate-x-1/2">
-                    <span className="text-sm font-bold text-white tracking-tight">{title}</span>
+                    <span className="text-lg font-bold text-white tracking-tight">{title}</span>
                 </div>
 
-                {/* Right: User avatar */}
-                <Link href="/dashboard/profile" className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-blue-900 border-2 border-blue-500/30 flex items-center justify-center shadow-lg">
+                {/* Right: User avatar (Grey circular initials) */}
+                <Link href="/dashboard/profile" className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center active:scale-95 transition-transform">
                     <span className="text-[10px] font-black text-white">{initials}</span>
                 </Link>
             </div>
